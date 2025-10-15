@@ -2,8 +2,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
-from database import engine
-
 
 load_dotenv(dotenv_path=".env.local")
 
@@ -19,7 +17,8 @@ def get_db():
         yield db
     finally:
         db.close()
-
+        
+from database import engine
 conn = engine.connect()
 print("Connected successfully!")
 conn.close()
