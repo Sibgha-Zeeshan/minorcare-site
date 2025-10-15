@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.env
+.venv/
+.env.local
+
+# Node
+node_modules/
+dist/
+build/
+npm-debug.log*
+
+# VS Code
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
