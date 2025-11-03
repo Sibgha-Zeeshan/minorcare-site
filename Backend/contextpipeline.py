@@ -12,6 +12,39 @@ if not GROQ_API_KEY:
 # API endpoints
 WHISPER_TRANSLATE_URL = "https://api.groq.com/openai/v1/audio/translations"
 TTS_URL = "https://api.groq.com/openai/v1/audio/speech"
+CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+def clean_urdu_text(urdu_text):
+    """
+    Step 1.5: Clean and correct Urdu transcription using Groq Llama 3.1 model
+    """
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    prompt = f"Fix and complete this Urdu text so it reads fluently and grammatically correct:\n\n{urdu_text}"
+
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "You are an expert Urdu linguist and editor."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.4
+    }
+
+    print("Cleaning Urdu text for better translation context...")
+    response = requests.post(CHAT_URL, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Urdu cleaning failed: {response.status_code}, {response.text}")
+
+    result = response.json()
+    cleaned_text = result["choices"][0]["message"]["content"].strip()
+    print("Urdu text cleaned successfully.")
+    return cleaned_text
+
 
 def translate_audio_to_english(audio_path, model="whisper-large-v3"):
     """
@@ -75,6 +108,12 @@ def main():
 
     # Step 1: Translate audio to English
     json_result, english_text = translate_audio_to_english(audio_input)
+
+    # Clean Urdu text before translation
+    urdu_text = json_result.get("text", "")
+    if urdu_text.strip():
+        cleaned_urdu = clean_urdu_text(urdu_text)
+        json_result["cleaned_urdu"] = cleaned_urdu
 
     # Save JSON output
     with open("translation_output.json", "w", encoding="utf-8") as f:
