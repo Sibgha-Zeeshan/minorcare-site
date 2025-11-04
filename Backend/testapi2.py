@@ -1,3 +1,4 @@
+# type: ignore
 import os
 import json
 import asyncio
@@ -59,7 +60,7 @@ async def text_to_speech_edge(text, output_path="english_output.mp3", voice="en-
 # STEP 3: Combine both steps in a pipeline
 # --------------------------------------------------
 def main():
-    audio_input = "dataset - urdu.wav"  # Replace with your Urdu file path
+    audio_input = "../Bulbul ka Bacha.mp3"  # Replace with your Urdu file path
 
     # Step 1: Translate to English
     json_result, english_text = translate_audio_to_english(audio_input)

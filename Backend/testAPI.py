@@ -1,3 +1,4 @@
+# type: ignore
 import os
 import json
 import requests
@@ -71,7 +72,7 @@ def text_to_speech(text, output_path="output_english.wav", model="playai-tts", v
 
 def main():
     # Input audio file (Urdu speech)
-    audio_input = "../winter-fall.mp3"
+    audio_input = "../Bulbul ka Bacha.mp3"
 
     # Step 1: Translate audio to English
     json_result, english_text = translate_audio_to_english(audio_input)
