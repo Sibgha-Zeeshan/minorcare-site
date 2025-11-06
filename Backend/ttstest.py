@@ -1,12 +1,17 @@
 # type: ignore
-model_name = "tts_models/multilingual/multi-dataset/xtts_v2"
-
 from TTS.api import TTS
 
-tts = TTS(model_name)
+model_name = "tts_models/multilingual/multi-dataset/xtts_v2"
+
+tts = TTS(model_name, gpu=False)
+
+outfile = "urdu_testing.wav"
+
 tts.tts_to_file(
-    text="آپ بہت اچھا کام کر رہے ہیں",
-    file_path="urdu_testing.wav",
-    language="ur"  # important for multilingual models
+    text="This is a quick test of the TTS system.",
+    file_path="test_en.wav",
+    language="en",
+    speaker_wav="../English audio.wav",
 )
-print("saved:", file_path)
+
+print("saved:", outfile)
