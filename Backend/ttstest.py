@@ -8,7 +8,7 @@ tts = TTS(model_name, gpu=False)
 outfile = "urdu_testing.wav"
 
 tts.tts_to_file(
-    text="This is a quick test of the TTS system.",
+    text="آپ بہت اچھا کام کر رہے ہیں",
     file_path="test_en.wav",
     language="en",
     speaker_wav="../English audio.wav",
