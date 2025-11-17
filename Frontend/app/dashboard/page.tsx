@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthDemo } from "@/hooks/use-auth-demo"
-import { useDemo } from "@/lib/demo-context"
+import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import type { User } from "@/types"
 import StudentDashboard from "@/components/dashboards/student-dashboard"
 import SponsorDashboard from "@/components/dashboards/sponsor-dashboard"
+import AdminDashboard from "@/components/dashboards/admin-dashboard"
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuthDemo()
-  const { isDemoMode, exitDemoMode } = useDemo()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const supabase = createClient()
 
@@ -27,18 +26,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      if (isDemoMode) {
-        setProfile(user)
-        setLoading(false)
-      } else {
-        loadProfile()
-      }
+      loadProfile()
     }
-  }, [user, isDemoMode])
+  }, [user])
 
   const loadProfile = async () => {
     try {
-      const { data } = await supabase.from("users").select("*").eq("id", user?.id).single()
+      if (!user) return
+      const { data } = await supabase.from("users").select("*").eq("id", user.id).single()
 
       setProfile(data)
     } catch (err) {
@@ -57,37 +52,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-linear-to-b from-blue-50 to-indigo-50">
       <div className="border-b bg-white shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Welcome, {profile.full_name}!</h1>
             <p className="text-gray-600 text-sm">
-              {profile.role === "student" ? "Student" : "Mentor"} Account {isDemoMode && "(Demo Mode)"}
+              {profile.role === "admin" ? "Admin" : profile.role === "student" ? "Student" : "Mentor"} Account
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => router.push("/profile")} className="rounded-lg">
               Settings
             </Button>
-            {isDemoMode && (
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  exitDemoMode()
-                  router.push("/login")
-                }}
-                className="rounded-lg"
-              >
-                Exit Demo
-              </Button>
-            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {profile.role === "student" ? (
+        {profile.role === "admin" ? (
+          <AdminDashboard />
+        ) : profile.role === "student" ? (
           <StudentDashboard userId={profile.id} />
         ) : (
           <SponsorDashboard userId={profile.id} />

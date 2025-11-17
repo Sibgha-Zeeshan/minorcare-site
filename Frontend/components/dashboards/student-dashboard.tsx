@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { useDemo } from "@/lib/demo-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Chat } from "@/types"
-import { DEMO_CONVERSATIONS, DEMO_MENTORS } from "@/lib/demo-data"
 
 interface StudentDashboardProps {
   userId: string
@@ -18,7 +16,6 @@ export default function StudentDashboard({ userId }: StudentDashboardProps) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
-  const { isDemoMode } = useDemo()
 
   useEffect(() => {
     loadChats()
@@ -26,37 +23,19 @@ export default function StudentDashboard({ userId }: StudentDashboardProps) {
 
   const loadChats = async () => {
     try {
-      let data: any[] = []
+      const { data } = await supabase
+        .from("chats")
+        .select(`
+          *,
+          sponsor:users!sponsor_id(id, full_name, profile_image_url),
+          messages(id, text_original, text_translated, created_at)
+        `)
+        .eq("student_id", userId)
+        .order("created_at", { ascending: false })
+        .order("created_at", { foreignTable: "messages", ascending: false })
+        .limit(1, { foreignTable: "messages" })
 
-      if (isDemoMode) {
-        // Get conversations for this student
-        const studentConversations = DEMO_CONVERSATIONS.filter((c: any) => c.student_id === userId)
-
-        data = studentConversations.map((conv: any) => {
-          const mentor = DEMO_MENTORS.find((m: any) => m.id === conv.mentor_id)
-          return {
-            id: conv.id,
-            student_id: conv.student_id,
-            mentor_id: conv.mentor_id,
-            created_at: conv.created_at,
-            sponsor: mentor,
-          }
-        })
-      } else {
-        const { data: result } = await supabase
-          .from("chats")
-          .select(`
-            *,
-            sponsor:users!sponsor_id(id, full_name, profile_image_url),
-            messages(id, text_original, text_translated, created_at, order: created_at.desc, limit: 1)
-          `)
-          .eq("student_id", userId)
-          .order("created_at", { ascending: false })
-
-        data = result || []
-      }
-
-      setChats(data)
+      setChats(data || [])
     } catch (err) {
       console.error("Error loading chats:", err)
     } finally {

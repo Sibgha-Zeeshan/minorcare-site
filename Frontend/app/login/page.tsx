@@ -6,8 +6,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { useDemo } from "@/lib/demo-context"
-import { DEMO_STUDENTS, DEMO_MENTORS } from "@/lib/demo-data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +17,6 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const router = useRouter()
   const supabase = createClient()
-  const { setDemoMode } = useDemo()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,22 +41,8 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoStudent = () => {
-    setDemoMode(true, {
-      ...DEMO_STUDENTS[0],
-    })
-    router.push("/dashboard")
-  }
-
-  const handleDemoMentor = () => {
-    setDemoMode(true, {
-      ...DEMO_MENTORS[0],
-    })
-    router.push("/dashboard")
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-blue-50 to-indigo-50 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
@@ -94,18 +77,6 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-center text-sm text-muted-foreground mb-3">Want to see how it works?</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={handleDemoStudent} variant="outline" className="rounded-lg h-10 text-sm bg-transparent">
-                Demo: Student
-              </Button>
-              <Button onClick={handleDemoMentor} variant="outline" className="rounded-lg h-10 text-sm bg-transparent">
-                Demo: Mentor
-              </Button>
-            </div>
-          </div>
 
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">Don't have an account? </span>

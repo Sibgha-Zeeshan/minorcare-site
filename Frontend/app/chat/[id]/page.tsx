@@ -5,7 +5,6 @@ import type React from "react"
 import { useEffect, useState, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { useDemo } from "@/lib/demo-context"
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +14,6 @@ import AudioRecorder from "@/components/chat/audio-recorder"
 
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth()
-  const { isDemoMode, getDemoChatMessages, getDemoChatUsers } = useDemo()
   const router = useRouter()
   const params = useParams()
   const chatId = params.id as string
@@ -30,19 +28,18 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!authLoading && !user && !isDemoMode) {
+    if (!authLoading && !user) {
       router.push("/login")
     }
-  }, [authLoading, user, isDemoMode, router])
+  }, [authLoading, user, router])
 
   useEffect(() => {
-    if ((chatId && user) || (chatId && isDemoMode)) {
+    if (chatId && user) {
       loadMessages()
-      if (!isDemoMode) {
-        subscribeToMessages()
-      }
+      const unsubscribe = subscribeToMessages()
+      return () => unsubscribe?.()
     }
-  }, [chatId, user, isDemoMode])
+  }, [chatId, user])
 
   useEffect(() => {
     scrollToBottom()
@@ -54,26 +51,17 @@ export default function ChatPage() {
 
   const loadMessages = async () => {
     try {
-      let data: Message[] = []
+      const result = await supabase
+        .from("messages")
+        .select("*")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true })
 
-      if (isDemoMode) {
-        data = getDemoChatMessages(chatId)
-        const usersMap = getDemoChatUsers(chatId)
-        setUsers(usersMap)
-      } else {
-        const result = await supabase
-          .from("messages")
-          .select("*")
-          .eq("chat_id", chatId)
-          .order("created_at", { ascending: true })
-
-        data = result.data || []
-        if (data.length > 0) {
-          await loadUsers(data)
-        }
-      }
-
+      const data = result.data || []
       setMessages(data)
+      if (data.length > 0) {
+        await loadUsers(data)
+      }
     } catch (err) {
       console.error("Error loading messages:", err)
     } finally {
@@ -146,28 +134,13 @@ export default function ChatPage() {
     setSending(true)
 
     try {
-      if (isDemoMode) {
-        const newMessage: Message = {
-          id: `msg-demo-${Date.now()}`,
-          chat_id: chatId,
-          sender_id: user.id,
-          message_type: "text",
-          text_original: textInput,
-          text_translated: null,
-          audio_url: null,
-          language_original: users[user.id]?.language_preference || "english",
-          created_at: new Date().toISOString(),
-        }
-        setMessages((prev) => [...prev, newMessage])
-      } else {
-        await supabase.from("messages").insert({
-          chat_id: chatId,
-          sender_id: user.id,
-          message_type: "text",
-          text_original: textInput,
-          language_original: users[user.id]?.language_preference || "english",
-        })
-      }
+      await supabase.from("messages").insert({
+        chat_id: chatId,
+        sender_id: user.id,
+        message_type: "text",
+        text_original: textInput,
+        language_original: users[user.id]?.language_preference || "english",
+      })
 
       setTextInput("")
     } catch (err) {
@@ -184,39 +157,20 @@ export default function ChatPage() {
     setUploadingAudio(true)
 
     try {
-      if (isDemoMode) {
-        const audioUrl = URL.createObjectURL(audioBlob)
-        const newMessage: Message = {
-          id: `msg-audio-demo-${Date.now()}`,
-          chat_id: chatId,
-          sender_id: user.id,
-          message_type: "audio",
-          text_original: null,
-          text_translated: null,
-          audio_url: audioUrl,
-          language_original: users[user.id]?.language_preference || "english",
-          created_at: new Date().toISOString(),
-        }
-        setMessages((prev) => [...prev, newMessage])
-      } else {
-        // Upload audio to Supabase Storage
-        const fileName = `audio_${Date.now()}.webm`
-        const { data, error } = await supabase.storage.from("messages").upload(fileName, audioBlob)
+      const fileName = `audio_${Date.now()}.webm`
+      const { error } = await supabase.storage.from("messages").upload(fileName, audioBlob)
 
-        if (error) throw error
+      if (error) throw error
 
-        // Get public URL
-        const { data: publicData } = supabase.storage.from("messages").getPublicUrl(fileName)
+      const { data: publicData } = supabase.storage.from("messages").getPublicUrl(fileName)
 
-        // Create message record with audio URL
-        await supabase.from("messages").insert({
-          chat_id: chatId,
-          sender_id: user.id,
-          message_type: "audio",
-          audio_url: publicData.publicUrl,
-          language_original: users[user.id]?.language_preference || "english",
-        })
-      }
+      await supabase.from("messages").insert({
+        chat_id: chatId,
+        sender_id: user.id,
+        message_type: "audio",
+        audio_url: publicData.publicUrl,
+        language_original: users[user.id]?.language_preference || "english",
+      })
     } catch (err) {
       console.error("Error uploading audio:", err)
       alert("Failed to upload audio")
@@ -234,7 +188,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-blue-50 to-indigo-50">
+    <div className="h-screen flex flex-col bg-linear-to-b from-blue-50 to-indigo-50">
       {/* Header */}
       <div className="border-b bg-white shadow-sm p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -243,7 +197,6 @@ export default function ChatPage() {
               ← Back
             </Button>
             <h1 className="text-lg font-semibold">Chat</h1>
-            {isDemoMode && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Demo Mode</span>}
           </div>
           <Button variant="outline" onClick={() => router.push("/profile")} className="rounded-lg">
             Profile

@@ -18,7 +18,7 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
 
   return (
     <div className={`flex gap-3 mb-4 ${isOwn ? "flex-row-reverse" : ""}`}>
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-semibold">
+      <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-400 to-purple-500 shrink-0 flex items-center justify-center text-white text-xs font-semibold">
         {sender?.full_name?.charAt(0) || "?"}
       </div>
 
@@ -29,7 +29,7 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
               isOwn ? "bg-blue-500 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"
             }`}
           >
-            <p className="break-words">{message.text_original}</p>
+            <p className="wrap-break-word">{message.text_original}</p>
           </div>
         )}
 
@@ -42,7 +42,7 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
             <p className="text-xs font-medium mb-1 opacity-70">
               {message.language_original === "urdu" ? "English" : "Urdu"} Translation
             </p>
-            <p className="break-words">{message.text_translated}</p>
+            <p className="wrap-break-word">{message.text_translated}</p>
           </div>
         )}
 

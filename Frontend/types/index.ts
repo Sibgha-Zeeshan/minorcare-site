@@ -1,4 +1,4 @@
-export type UserRole = "student" | "sponsor"
+export type UserRole = "student" | "sponsor" | "admin"
 
 export interface User {
   id: string
@@ -18,6 +18,7 @@ export interface Chat {
   student?: User
   sponsor?: User
   last_message?: Message
+  messages?: Message[]
 }
 
 export type MessageType = "text" | "audio"
