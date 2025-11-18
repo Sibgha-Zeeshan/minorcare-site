@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import type { Chat } from "@/types"
+import type { Chat, Message } from "@/types"
 
 interface SponsorDashboardProps {
   userId: string
@@ -23,19 +23,43 @@ export default function SponsorDashboard({ userId }: SponsorDashboardProps) {
 
   const loadChats = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("chats")
-        .select(`
-          *,
-          student:users!student_id(id, full_name, profile_image_url),
-          messages(id, text_original, text_translated, created_at)
-        `)
+        .select(
+          `
+          id,
+          student_id,
+          sponsor_id,
+          created_at,
+          student:users!student_id(id, full_name, profile_image_url)
+        `,
+        )
         .eq("sponsor_id", userId)
         .order("created_at", { ascending: false })
-        .order("created_at", { foreignTable: "messages", ascending: false })
-        .limit(1, { foreignTable: "messages" })
 
-      setChats(data || [])
+      if (error) throw error
+
+      const chatsWithMessages = await Promise.all(
+        (data || []).map(async (chat) => {
+          const { data: lastMessageData, error: lastMessageError } = await supabase
+            .from("messages")
+            .select("id, text_original, text_translated, created_at")
+            .eq("chat_id", chat.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+
+          if (lastMessageError) {
+            console.error("Error loading last message:", lastMessageError)
+          }
+
+          return {
+            ...chat,
+            messages: lastMessageData && lastMessageData.length > 0 ? (lastMessageData as Message[]) : [],
+          }
+        }),
+      )
+
+      setChats(chatsWithMessages)
     } catch (err) {
       console.error("Error loading chats:", err)
     } finally {
@@ -53,9 +77,15 @@ export default function SponsorDashboard({ userId }: SponsorDashboardProps) {
 
   if (chats.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-600 mb-4">No students assigned yet.</p>
-        <p className="text-sm text-gray-500">You will see your students here once they are assigned.</p>
+      <div className="flex items-center justify-center py-12">
+        <Card className="max-w-md text-center border-dashed border-primary/40 bg-primary/5">
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="text-lg font-semibold text-primary">Awaiting Student Assignment</h3>
+            <p className="text-sm text-muted-foreground">
+              Thank you for your involvement. We'll reach out to you when a student is assigned to you.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
