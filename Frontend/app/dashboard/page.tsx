@@ -17,6 +17,7 @@ export default function DashboardPage() {
 
   const [profile, setProfile] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -28,25 +29,67 @@ export default function DashboardPage() {
     if (user) {
       loadProfile()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const loadProfile = async () => {
     try {
       if (!user) return
-      const { data } = await supabase.from("users").select("*").eq("id", user.id).single()
+      setLoading(true)
+      setError(null)
+      
+      const { data, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+
+      if (profileError) {
+        console.error("Error loading profile:", profileError)
+        console.error("Error details:", {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint,
+        })
+        setError(
+          `Failed to load profile: ${profileError.message || "Unknown error"}. This is likely a permissions issue. Please check your Supabase RLS policies.`
+        )
+        return
+      }
+
+      if (!data) {
+        setError("Profile not found. Please contact support.")
+        return
+      }
 
       setProfile(data)
     } catch (err) {
       console.error("Error loading profile:", err)
+      setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading || !profile) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
+          <p className="text-gray-600 mb-4">{error || "Profile not found"}</p>
+          <Button onClick={() => window.location.reload()} className="rounded-lg">
+            Refresh Page
+          </Button>
+        </div>
       </div>
     )
   }

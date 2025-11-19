@@ -15,6 +15,18 @@ export function useAuth() {
       key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     })
 
+    // Check current session on mount
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
+
+    checkSession()
+
+    // Listen to auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

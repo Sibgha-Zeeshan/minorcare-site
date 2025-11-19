@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
@@ -19,6 +19,19 @@ export default function SignupPage() {
   const [error, setError] = useState("")
   const router = useRouter()
   const supabase = createClient()
+// Edge Case - checks if the user is already logged in, if so, redirect to dashboard
+useEffect(() => {
+  const checkUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      // User is already logged in, redirect to dashboard
+      router.push("/dashboard");
+    }
+  };
+  checkUser();
+}, [router, supabase]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,14 +54,21 @@ export default function SignupPage() {
         setError(authError.message)
       } else if (data.user) {
         // Create user profile
-        await supabase.from("users").insert({
-          id: data.user.id,
-          email,
-          full_name: fullName,
-          role,
-          language_preference: role === "student" ? "urdu" : "english",
-        })
+        // const { error: profileError } = await supabase.from("users").insert({
+        //   id: data.user.id,
+        //   email,
+        //   full_name: fullName,
+        //   role,
+        //   language_preference: role === "student" ? "urdu" : "english",
+        // })
 
+        // if (profileError) {
+        //   setError(`Failed to create profile: ${profileError.message}`)
+        //   return
+        // }
+
+        // Wait a bit for auth state to propagate
+        await new Promise((resolve) => setTimeout(resolve, 500))
         router.push("/dashboard")
       }
     } catch (err) {

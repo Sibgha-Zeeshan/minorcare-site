@@ -108,7 +108,7 @@ export default function ProfilePage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email</label>
-                <Input type="email" value={user?.email} disabled className="bg-gray-100" />
+                <Input type="email" value={user?.email || ""} disabled className="bg-gray-100" />
               </div>
 
               <div className="space-y-2">
