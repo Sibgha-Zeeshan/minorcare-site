@@ -79,7 +79,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-pink-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-purple-50 to-pink-50 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Join Us</CardTitle>
@@ -140,7 +140,7 @@ useEffect(() => {
                   }`}
                   disabled={loading}
                 >
-                  Mentor
+                  Sponsor 
                 </button>
               </div>
             </div>
