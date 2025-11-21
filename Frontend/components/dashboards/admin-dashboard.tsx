@@ -47,9 +47,28 @@ export default function AdminDashboard() {
           .order("created_at", { ascending: false }),
       ])
 
-      setStudents(studentsRes.data || [])
-      setMentors(mentorsRes.data || [])
-      setAssignments(assignmentsRes.data || [])
+      if (studentsRes.error || mentorsRes.error || assignmentsRes.error) {
+        console.error("Admin data errors:", {
+          students: studentsRes.error,
+          mentors: mentorsRes.error,
+          assignments: assignmentsRes.error,
+        })
+        throw new Error("Failed to fetch admin data")
+      }
+
+      setStudents(Array.isArray(studentsRes.data) ? studentsRes.data : [])
+      setMentors(Array.isArray(mentorsRes.data) ? mentorsRes.data : [])
+
+      setAssignments(
+        Array.isArray(assignmentsRes.data)
+          ? assignmentsRes.data.map((a: any) => ({
+              id: a.id,
+              created_at: a.created_at,
+              student: Array.isArray(a.student) ? a.student[0] : a.student,
+              sponsor: Array.isArray(a.sponsor) ? a.sponsor[0] : a.sponsor,
+            }))
+          : []
+      )
     } catch (err) {
       console.error("Error loading admin data:", err)
       setError("Failed to load data. Please refresh.")
