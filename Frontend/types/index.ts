@@ -31,7 +31,9 @@ export interface Message {
   text_original: string | null
   text_translated: string | null
   audio_url: string | null
+  translated_audio_url?: string | null
   language_original: string | null
+  translation_status?: "pending" | "processing" | "completed" | "failed" | null
   created_at: string
   sender?: User
 }

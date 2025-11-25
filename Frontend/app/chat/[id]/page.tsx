@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase";
@@ -18,10 +18,11 @@ export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
   const chatId = params.id as string;
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
+  const [currentProfile, setCurrentProfile] = useState<User | null>(null);
   const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -41,6 +42,24 @@ export default function ChatPage() {
       return () => unsubscribe?.();
     }
   }, [chatId, user]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      if (error) {
+        console.error("Error loading profile:", error);
+        return;
+      }
+      setCurrentProfile(data);
+    };
+
+    fetchProfile();
+  }, [user, supabase]);
 
   useEffect(() => {
     scrollToBottom();
@@ -88,6 +107,35 @@ export default function ChatPage() {
 
     setUsers(usersMap);
   };
+
+  const triggerPipeline = useCallback(
+    async (messageId: string, audioUrl: string, sourceLang: string, targetLang: string) => {
+      const endpoint = sourceLang?.toLowerCase() === "urdu" ? "stm" : "mts";
+
+      try {
+        const response = await fetch(`/api/pipeline/${endpoint}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messageId,
+            audioUrl,
+            sourceLang,
+            targetLang,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Pipeline trigger failed:", errorText);
+        }
+      } catch (err) {
+        console.error("Error triggering pipeline:", err);
+      }
+    },
+    []
+  );
 
   const subscribeToMessages = () => {
     const subscription = supabase
@@ -150,7 +198,7 @@ export default function ChatPage() {
         sender_id: user.id,
         message_type: "text",
         text_original: textInput,
-        language_original: users[user.id]?.language_preference || "english",
+        language_original: currentProfile?.language_preference || "english",
       });
 
       setTextInput("");
@@ -179,13 +227,29 @@ export default function ChatPage() {
         .from("messages")
         .getPublicUrl(fileName);
 
-      await supabase.from("messages").insert({
-        chat_id: chatId,
-        sender_id: user.id,
-        message_type: "audio",
-        audio_url: publicData.publicUrl,
-        language_original: users[user.id]?.language_preference || "english",
-      });
+      const sourceLang = currentProfile?.language_preference || "english";
+      const targetLang = sourceLang === "urdu" ? "english" : "urdu";
+
+      const { data: insertedMessage, error: insertError } = await supabase
+        .from("messages")
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          message_type: "audio",
+          audio_url: publicData.publicUrl,
+          language_original: sourceLang,
+          translation_status: "pending",
+        })
+        .select("*")
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      if (insertedMessage) {
+        await triggerPipeline(insertedMessage.id, publicData.publicUrl, sourceLang, targetLang);
+      }
     } catch (err) {
       console.error("Error uploading audio:", err);
       alert("Failed to upload audio");

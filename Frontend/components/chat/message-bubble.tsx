@@ -52,6 +52,19 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
           </div>
         )}
 
+        {message.translated_audio_url && (
+          <div className="mt-2">
+            <p className="text-xs font-medium mb-1 opacity-70">Translated Audio</p>
+            <audio src={message.translated_audio_url} controls className="w-48 h-8 rounded-lg" />
+          </div>
+        )}
+
+        {message.translation_status && message.message_type === "audio" && (
+          <p className="text-[10px] text-gray-400 mt-1 capitalize">
+            Translation: {message.translation_status}
+          </p>
+        )}
+
         <p className="text-xs text-gray-500 mt-1">{formatTime(message.created_at)}</p>
       </div>
     </div>

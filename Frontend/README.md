@@ -28,3 +28,12 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Translation Pipeline Integration
+
+The chat UI now expects a backend pipeline service that exposes:
+
+- `POST /pipeline/stm` – Urdu audio → English transcript + audio
+- `POST /pipeline/mts` – English audio → Urdu transcript + audio
+
+Expose the FastAPI service (see `Backend/app.py`) and set `PIPELINE_API_URL` in your Next.js environment so the proxy routes in `app/api/pipeline/*` can reach it.

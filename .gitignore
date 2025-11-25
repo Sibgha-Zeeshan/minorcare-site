@@ -48,3 +48,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Audio files
+aqalmand-ishara.mp3
+Bulbul ka Bacha.mp3
+english_output.wav
+urdu_output.wav
+en_to_ur_stt_output.json
+en_to_ur_output.txt
+translation_output.json
