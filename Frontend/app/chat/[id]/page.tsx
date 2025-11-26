@@ -216,15 +216,20 @@ export default function ChatPage() {
     setUploadingAudio(true);
 
     try {
-      const fileName = `audio_${Date.now()}.webm`;
+      // Audio file extension is .webm (by default) can be changed 
+      // Create extension detection cross browser compatibility
+      const mime = audioBlob.type; 
+      let ext = 'webm';
+      if (mime.includes('ogg')) ext = 'ogg';
+      if (mime.includes('mp4') || mime.includes('mpeg')) ext = 'm4a';
+      const fileName = `audio_${Date.now()}.${ext}`;
       const { error } = await supabase.storage
-        .from("messages")
+        .from("audio-messages")
         .upload(fileName, audioBlob);
-
       if (error) throw error;
 
       const { data: publicData } = supabase.storage
-        .from("messages")
+        .from("audio-messages")
         .getPublicUrl(fileName);
 
       const sourceLang = currentProfile?.language_preference || "english";

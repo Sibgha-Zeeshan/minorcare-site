@@ -2,7 +2,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import List, Union
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -17,7 +17,7 @@ from STM import text_to_speech, translate_audio_to_english
 load_dotenv(".env.local")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "messages")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
@@ -39,19 +39,54 @@ class PipelineResponse(BaseModel):
 
 app = FastAPI(title="MinorCare Translation Pipelines", version="1.0.0")
 
+def _extract_storage_location(parsed_url: str) -> tuple[Union[str, None], Union[str, None]]:
+  marker = "/storage/v1/object/"
+
+  if marker not in parsed_url:
+    return None, None
+
+  _, remainder = parsed_url.split(marker, 1)
+  segments = remainder.split("/")
+
+  if not segments:
+    return None, None
+
+  if segments[0] in {"public", "authenticated"}:
+    segments = segments[1:]
+
+  if not segments:
+    return None, None
+
+  bucket = segments[0]
+  object_path = "/".join(segments[1:]) if len(segments) > 1 else ""
+  return bucket, object_path
+
+
 # Downloads the original audio file from Supabase to a temporary file on disk.
-def _download_remote_audio(url: str) -> str:
-  parsed = urlparse(url)
+def _download_remote_audio(url: Union[str, HttpUrl]) -> str:
+  url_str = str(url)
+  parsed = urlparse(url_str)
   suffix = Path(parsed.path).suffix or ".webm"
   fd, path = tempfile.mkstemp(suffix=suffix)
 
   try:
+    bucket, object_path = _extract_storage_location(parsed.path)
+
+    if bucket and object_path:
+      download_url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{object_path}"
+      headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      }
+      response = requests.get(download_url, headers=headers, stream=True, timeout=120)
+    else:
+      response = requests.get(url_str, stream=True, timeout=120)
+
     with os.fdopen(fd, "wb") as tmp_file:
-      with requests.get(url, stream=True, timeout=120) as response:
-        response.raise_for_status()
-        for chunk in response.iter_content(chunk_size=1024 * 256):
-          if chunk:
-            tmp_file.write(chunk)
+      response.raise_for_status()
+      for chunk in response.iter_content(chunk_size=1024 * 256):
+        if chunk:
+          tmp_file.write(chunk)
   except Exception:
     if os.path.exists(path):
       os.remove(path)
