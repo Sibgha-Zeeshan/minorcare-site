@@ -15,6 +15,16 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
       minute: "2-digit",
     })
   }
+// Edge Case - formatLanguageLabel is a helper function that formats the language label to a consistent format.
+  const formatLanguageLabel = (language?: string | null) => {
+    if (!language) return "Unknown"
+    const normalized = language.toLowerCase()
+    if (normalized === "urdu") return "Urdu"
+    if (normalized === "english") return "English"
+    return language
+  }
+
+  const translatedLanguageLabel = message.language_original?.toLowerCase() === "urdu" ? "English" : "Urdu"
 
   return (
     <div className={`flex gap-3 mb-4 ${isOwn ? "flex-row-reverse" : ""}`}>
@@ -48,13 +58,16 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
 
         {message.audio_url && (
           <div className="mt-2">
+            <p className="text-xs font-medium mb-1 opacity-70">
+              Original Audio ({formatLanguageLabel(message.language_original)})
+            </p>
             <audio src={message.audio_url} controls className="w-48 h-8 rounded-lg" />
           </div>
         )}
 
         {message.translated_audio_url && (
           <div className="mt-2">
-            <p className="text-xs font-medium mb-1 opacity-70">Translated Audio</p>
+            <p className="text-xs font-medium mb-1 opacity-70">Translated Audio ({translatedLanguageLabel})</p>
             <audio src={message.translated_audio_url} controls className="w-48 h-8 rounded-lg" />
           </div>
         )}

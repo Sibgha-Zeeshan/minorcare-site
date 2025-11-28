@@ -1,3 +1,4 @@
+# type: ignore
 from sqlalchemy import Column, String, DateTime, ForeignKey, Enum, Text
 from sqlalchemy.dialects.postgresql import UUID
 import uuid

@@ -29,6 +29,29 @@ export default function ChatPage() {
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Edge Case - normalizeLanguage is a helper function that normalizes the language preference to a consistent format.
+  const normalizeLanguage = (value?: string | null) => {
+    if (!value) return "english";
+    const lowered = value.toLowerCase();
+    return lowered === "urdu" ? "urdu" : "english";
+  };
+
+  const getSourceLanguage = () => {
+    if (currentProfile?.language_preference) {
+      return normalizeLanguage(currentProfile.language_preference);
+    }
+    if (currentProfile?.role === "student") {
+      return "urdu";
+    }
+    if (currentProfile?.role === "sponsor") {
+      return "english";
+    }
+    return "english";
+  };
+
+  const getTargetLanguage = (sourceLang: string) =>
+    sourceLang?.toLowerCase() === "urdu" ? "english" : "urdu";
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
@@ -43,6 +66,7 @@ export default function ChatPage() {
     }
   }, [chatId, user]);
 
+  // The dashboard/chat UI already fetches the “profile” directly from Supabase’s users table—see Frontend/app/chat/[id]/page.tsx, the fetchProfile effect:
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
@@ -193,12 +217,14 @@ export default function ChatPage() {
     setSending(true);
 
     try {
+      const sourceLang = getSourceLanguage();
+
       await supabase.from("messages").insert({
         chat_id: chatId,
         sender_id: user.id,
         message_type: "text",
         text_original: textInput,
-        language_original: currentProfile?.language_preference || "english",
+        language_original: sourceLang,
       });
 
       setTextInput("");
@@ -232,8 +258,8 @@ export default function ChatPage() {
         .from("audio-messages")
         .getPublicUrl(fileName);
 
-      const sourceLang = currentProfile?.language_preference || "english";
-      const targetLang = sourceLang === "urdu" ? "english" : "urdu";
+      const sourceLang = getSourceLanguage();
+      const targetLang = getTargetLanguage(sourceLang);
 
       const { data: insertedMessage, error: insertError } = await supabase
         .from("messages")
