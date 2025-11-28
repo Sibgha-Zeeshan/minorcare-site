@@ -28,6 +28,10 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioCacheRef = useRef<Record<string, string>>({});
+  const [audioSources, setAudioSources] = useState<
+    Record<string, { original?: string; translated?: string }>
+  >({});
 
   // Edge Case - normalizeLanguage is a helper function that normalizes the language preference to a consistent format.
   const normalizeLanguage = (value?: string | null) => {
@@ -51,6 +55,93 @@ export default function ChatPage() {
 
   const getTargetLanguage = (sourceLang: string) =>
     sourceLang?.toLowerCase() === "urdu" ? "english" : "urdu";
+
+  const extractStorageReference = (
+    url?: string | null
+  ):
+    | { bucket: string; path: string }
+    | { external: string }
+    | null => {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      const pattern = /\/storage\/v1\/object\/(?:public|authenticated|sign)\/([^/]+)\/(.+)/;
+      const match = parsed.pathname.match(pattern);
+      if (match) {
+        const bucket = match[1];
+        const path = match[2];
+        if (bucket && path) {
+          return { bucket, path };
+        }
+      }
+      return { external: url };
+    } catch (err) {
+      if (url.startsWith("http")) {
+        return { external: url };
+      }
+      return null;
+    }
+  };
+
+  const resolveAudioSource = useCallback(
+    async (message: Message, variant: "original" | "translated") => {
+      const rawUrl =
+        variant === "original" ? message.audio_url : message.translated_audio_url;
+
+      if (!rawUrl) return;
+
+      const cacheKey = `${message.id}-${variant}`;
+      if (audioCacheRef.current[cacheKey]) {
+        setAudioSources((prev) => ({
+          ...prev,
+          [message.id]: {
+            ...prev[message.id],
+            [variant]: audioCacheRef.current[cacheKey],
+          },
+        }));
+        return;
+      }
+
+      const reference = extractStorageReference(rawUrl);
+      if (!reference) return;
+
+      try {
+        let playableUrl = rawUrl;
+
+        if ("external" in reference) {
+          playableUrl = reference.external;
+        } else {
+          const { data, error } = await supabase.storage
+            .from(reference.bucket)
+            .download(reference.path);
+
+          if (error || !data) {
+            console.error("Failed to download audio:", error);
+            return;
+          }
+
+          const objectUrl = URL.createObjectURL(data);
+          audioCacheRef.current[cacheKey] = objectUrl;
+          playableUrl = objectUrl;
+        }
+
+        if (!playableUrl) {
+          return;
+        }
+
+        setAudioSources((prev) => ({
+          ...prev,
+          [message.id]: {
+            ...prev[message.id],
+            [variant]: playableUrl,
+          },
+        }));
+      } catch (error) {
+        console.error("Error resolving audio source:", error);
+      }
+    },
+    [supabase]
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -175,6 +266,8 @@ export default function ChatPage() {
         async (payload: RealtimePostgresChangesPayload<Message>) => {
           const newMessage = payload.new as Message;
           setMessages((prev) => [...prev, newMessage]);
+          resolveAudioSource(newMessage, "original");
+          resolveAudioSource(newMessage, "translated");
 
           // Load the user for this message
           const { data } = await supabase
@@ -201,6 +294,8 @@ export default function ChatPage() {
           setMessages((prev) =>
             prev.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
           );
+          resolveAudioSource(updatedMessage, "original");
+          resolveAudioSource(updatedMessage, "translated");
         }
       )
       .subscribe();
@@ -209,6 +304,21 @@ export default function ChatPage() {
       subscription.unsubscribe();
     };
   };
+
+  useEffect(() => {
+    messages.forEach((msg) => {
+      resolveAudioSource(msg, "original");
+      resolveAudioSource(msg, "translated");
+    });
+  }, [messages, resolveAudioSource]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(audioCacheRef.current).forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
 
   const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +446,10 @@ export default function ChatPage() {
                 message={msg}
                 isOwn={msg.sender_id === user?.id}
                 sender={users[msg.sender_id]}
+                originalAudioUrl={audioSources[msg.id]?.original ?? msg.audio_url}
+                translatedAudioUrl={
+                  audioSources[msg.id]?.translated ?? msg.translated_audio_url
+                }
               />
             ))
           )}

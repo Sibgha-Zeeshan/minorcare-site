@@ -7,3 +7,7 @@ Run the new FastAPI service (`Backend/app.py`) to expose both pipelines over HTT
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET` (defaults to `messages`)
+
+
+Backend Run Command:
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload

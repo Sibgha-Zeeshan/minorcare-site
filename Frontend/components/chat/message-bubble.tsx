@@ -6,9 +6,17 @@ interface MessageBubbleProps {
   message: Message
   isOwn: boolean
   sender?: User
+  originalAudioUrl?: string | null
+  translatedAudioUrl?: string | null
 }
 
-export default function MessageBubble({ message, isOwn, sender }: MessageBubbleProps) {
+export default function MessageBubble({
+  message,
+  isOwn,
+  sender,
+  originalAudioUrl,
+  translatedAudioUrl,
+}: MessageBubbleProps) {
   const formatTime = (date: string) => {
     return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -56,19 +64,19 @@ export default function MessageBubble({ message, isOwn, sender }: MessageBubbleP
           </div>
         )}
 
-        {message.audio_url && (
+        {originalAudioUrl && (
           <div className="mt-2">
             <p className="text-xs font-medium mb-1 opacity-70">
               Original Audio ({formatLanguageLabel(message.language_original)})
             </p>
-            <audio src={message.audio_url} controls className="w-48 h-8 rounded-lg" />
+            <audio src={originalAudioUrl} controls className="w-48 h-8 rounded-lg" preload="none" />
           </div>
         )}
 
-        {message.translated_audio_url && (
+        {translatedAudioUrl && (
           <div className="mt-2">
             <p className="text-xs font-medium mb-1 opacity-70">Translated Audio ({translatedLanguageLabel})</p>
-            <audio src={message.translated_audio_url} controls className="w-48 h-8 rounded-lg" />
+            <audio src={translatedAudioUrl} controls className="w-48 h-8 rounded-lg" preload="none" />
           </div>
         )}
 
