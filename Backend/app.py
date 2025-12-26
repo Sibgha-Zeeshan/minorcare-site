@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, HttpUrl
 
+# Importing the pipelines
 from MTS import english_audio_to_text, text_to_speech_urdu, translate_en_to_ur
 from STM import text_to_speech, translate_audio_to_english
 
@@ -35,7 +36,6 @@ class PipelineResponse(BaseModel):
   messageId: str
   text_translated: str
   translated_audio_url: str
-
 
 app = FastAPI(title="MinorCare Translation Pipelines", version="1.0.0")
 
@@ -154,7 +154,7 @@ def _cleanup(paths: List[str]):
       except OSError:
         pass
 
-
+# Student To Mentor (URDU TO ENGLISH) Pipeline
 @app.post("/pipeline/stm", response_model=PipelineResponse)
 def run_stm_pipeline(payload: PipelineBase):
   _set_status(payload.messageId, "processing")
@@ -187,7 +187,7 @@ def run_stm_pipeline(payload: PipelineBase):
   finally:
     _cleanup([source_path, tts_path])
 
-
+# Mentor To Student (ENGLISH TO URDU) Pipeline
 @app.post("/pipeline/mts", response_model=PipelineResponse)
 def run_mts_pipeline(payload: PipelineBase):
   _set_status(payload.messageId, "processing")
